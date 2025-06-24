@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Location Services</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+    }
+
+    .overlay {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      color: #4CAF50;
+    }
+
+    .header p {
+      font-size: 16px;
+      color: #ddd;
+    }
+
+    .location-container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 500px;
+      margin: 0 auto;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      text-align: center;
+    }
+
+    #map {
+      height: 300px;
+      width: 100%;
+      margin: 20px 0;
+      border-radius: 8px;
+      display: none;
+    }
+
+    #status {
+      margin: 20px 0;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    #locationDetails {
+      text-align: left;
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      display: none;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 10px 2px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="header">
+      <h1>Location Services</h1>
+      <p>We need your location to provide personalized services</p>
+    </div>
+
+    <div class="location-container">
+      <div id="status">Checking location services...</div>
+      <button onclick="getLocation()">Share My Location</button>
+      
+      <div id="map"></div>
+      
+      <div id="locationDetails">
+        <h3>Location Details:</h3>
+        <p><strong>Latitude:</strong> <span id="lat"></span></p>
+        <p><strong>Longitude:</strong> <span id="lon"></span></p>
+        <p><strong>Accuracy:</strong> <span id="acc"></span> meters</p>
+        <p><strong>Address:</strong> <span id="addr"></span></p>
+        <p><strong>Time:</strong> <span id="time"></span></p>
+      </div>
+    </div>
+
+    <footer>
+      &copy; 2025 Location Services. All rights reserved.
+    </footer>
+  </div>
+
+  <script>
+    function getLocation() {
+      document.getElementById('status').innerHTML = "Accessing your location...";
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          showPosition, 
+          showError,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        document.getElementById('status').innerHTML = "Geolocation is not supported by this browser.";
+      }
+    }
+    
+    function showPosition(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const acc = position.coords.accuracy;
+      const time = new Date(position.timestamp).toLocaleString();
+      
+      // Update UI
+      document.getElementById('status').innerHTML = "Location found!";
+      document.getElementById('lat').textContent = lat;
+      document.getElementById('lon').textContent = lon;
+      document.getElementById('acc').textContent = acc;
+      document.getElementById('time').textContent = time;
+      document.getElementById('locationDetails').style.display = 'block';
+      
+      // Show map
+      showMap(lat, lon);
+      
+      // Get address
+      getAddress(lat, lon);
+      
+      // Send to server
+      sendLocation(lat, lon, acc, time);
+    }
+    
+    function showMap(lat, lon) {
+      document.getElementById('map').style.display = 'block';
+      document.getElementById('map').innerHTML = 
+        `<iframe width="100%" height="100%" frameborder="0" style="border:0" 
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01},${lat-0.01},${lon+0.01},${lat+0.01}&layer=mapnik&marker=${lat},${lon}" 
+        allowfullscreen>
+        </iframe>`;
+    }
+    
+    function getAddress(lat, lon) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+      .then(response => response.json())
+      .then(data => {
+        const address = data.display_name || "Address not available";
+        document.getElementById('addr').textContent = address;
+        
+        // Update the location data with address
+        const time = document.getElementById('time').textContent;
+        sendLocation(lat, lon, document.getElementById('acc').textContent, time, address);
+      })
+      .catch(error => {
+        document.getElementById('addr').textContent = "Could not retrieve address";
+      });
+    }
+    
+    function sendLocation(lat, lon, acc, time, address = "") {
+      fetch('server.php', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          latitude: lat, 
+          longitude: lon,
+          accuracy: acc,
+          timestamp: time,
+          address: address
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    function showError(error) {
+      let message = "Error: ";
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          message += "You denied the request for geolocation.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          message += "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          message += "The request to get location timed out.";
+          break;
+        case error.UNKNOWN_ERROR:
+          message += "An unknown error occurred.";
+          break;
+      }
+      document.getElementById('status').innerHTML = message;
+    }
+    
+    // Try to get location automatically when page loads
+    window.onload = function() {
+      getLocation();
+    };
+  </script>
+</body>
+</html>

